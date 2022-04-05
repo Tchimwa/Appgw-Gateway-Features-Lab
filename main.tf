@@ -314,7 +314,7 @@ resource "azurerm_application_gateway" "appgw_web" {
 }
 
 resource "azurerm_network_interface_application_gateway_backend_address_pool_association" "appgwnic-assoc" {
-  count                   = 2
+  count                   = length (var.location)
   network_interface_id    = azurerm_network_interface.appvmnic[count.index].id
   ip_configuration_name   = "web0${count.index + 1}-ipcfg"
   backend_address_pool_id = azurerm_application_gateway.appgw_web.backend_address_pool[0].id
@@ -361,4 +361,15 @@ resource "azurerm_key_vault_access_policy" "appgwkv_access" {
   secret_permissions = [
     "Get", "List",
   ]
+}
+
+resource "azurerm_virtual_network_peering" "peering" {
+  count   = length(var.location)
+  name   = "Peering-to-${element(azurerm_virtual_network.vnet.*.name, 1 - count.index)}"
+  resource_group_name = azurerm_resource_group.main.name
+  virtual_network_name         = element(azurerm_virtual_network.vnet.*.name, count.index)
+  remote_virtual_network_id    = element(azurerm_virtual_network.vnet.*.id, 1 - count.index)
+  allow_virtual_network_access = true
+  allow_forwarded_traffic      = true
+  allow_gateway_transit = false
 }
