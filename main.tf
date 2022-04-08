@@ -18,7 +18,7 @@ provider "azurerm" {
 data "azurerm_client_config" "current" {}
 
 data "template_file" "web_server" {
-  template = file("./scripts/webserver.sh")
+  template = file("./scripts/web-https.sh")
 }
 
 resource "azurerm_resource_group" "main" {
@@ -81,6 +81,13 @@ resource "azurerm_subnet" "bastion" {
   virtual_network_name = azurerm_virtual_network.vnet[0].name
   resource_group_name  = azurerm_resource_group.main.name
   address_prefixes     = [ cidrsubnet(var.vnet_address_space[0], 8, 3) ]
+}
+
+resource "azurerm_subnet" "webapp-pe" {
+  name                 = "webapp-pe-sbnet"
+  virtual_network_name = azurerm_virtual_network.vnet[1].name
+  resource_group_name  = azurerm_resource_group.main.name
+  address_prefixes     = [ cidrsubnet(var.vnet_address_space[1], 8, 3) ]
 }
 
 resource "azurerm_network_security_group" "appgw_nsg" {
@@ -330,8 +337,6 @@ resource "azurerm_key_vault" "kv" {
   purge_protection_enabled    = false
 
   sku_name = "standard"
-
-
 }
 
 resource "azurerm_key_vault_certificate" "kv_cert" {
@@ -339,7 +344,7 @@ resource "azurerm_key_vault_certificate" "kv_cert" {
   key_vault_id = azurerm_key_vault.kv.id
 
   certificate {
-    contents = filebase64("./certs/wildcardcedsougang.pfx")
+    contents = filebase64("./certs/wildcard_ced-sougang_com.pfx")
     password = var.cert-password
   }
 }
@@ -361,6 +366,27 @@ resource "azurerm_key_vault_access_policy" "appgwkv_access" {
   secret_permissions = [
     "Get", "List",
   ]
+}
+
+resource "azurerm_app_service_plan" "appserviceplan" {
+  name                = "webapp-kv-asp"
+  resource_group_name = azurerm_resource_group.main.name
+  location            = var.location[1]
+  kind = "Linux"  
+  sku {
+    tier = "Free"
+    size = "F1"
+  }
+}
+
+resource "azurerm_app_service" "webapp" {
+  name                = "webapp-kv"
+  resource_group_name = azurerm_resource_group.main.name
+  location            = var.location[1]
+  app_service_plan_id = azurerm_app_service_plan.appserviceplan.id
+  site_config {
+    linux_fx_version = "DOTNETCORE|3.1"
+  }
 }
 
 resource "azurerm_virtual_network_peering" "peering" {
