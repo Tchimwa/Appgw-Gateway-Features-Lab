@@ -20,7 +20,7 @@ variable "vnet_address_space" {
 
 variable "username" {
   type    = string
-  default = "netdata"
+  default = "netadmin"
 }
 
 variable "password" {
