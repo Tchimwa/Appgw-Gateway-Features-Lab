@@ -22,7 +22,7 @@ data "template_file" "web_server" {
 }
 
 resource "azurerm_resource_group" "main" {
-  name     = "appgwkv-rg"
+  name     = "${var.init}-appgwkv-rg"
   location = var.location[0]
 }
 
@@ -133,7 +133,7 @@ resource "azurerm_network_security_group" "appgw_nsg" {
 }
 
 resource "azurerm_public_ip" "appgw-pip" {
-  name                = "appgwkv-pip"
+  name                = "${var.init}-appgwkv-pip"
   resource_group_name = azurerm_resource_group.main.name
   location            = azurerm_resource_group.main.location
   allocation_method   = "Static"
@@ -141,7 +141,7 @@ resource "azurerm_public_ip" "appgw-pip" {
 }
 
 resource "azurerm_public_ip" "bst-pip" {
-  name                = "appgwkv-bst-pip"
+  name                = "${var.init}-appgwkv-bst-pip"
   resource_group_name = azurerm_resource_group.main.name
   location            = azurerm_resource_group.main.location
   allocation_method   = "Static"
@@ -149,7 +149,7 @@ resource "azurerm_public_ip" "bst-pip" {
 }
 
 resource "azurerm_bastion_host" "bst-host" {
-  name                = "appgwkv-bst"
+  name                = "${var.init}-appgwkv-bst"
   resource_group_name = azurerm_resource_group.main.name
   location            = azurerm_resource_group.main.location
 
@@ -198,7 +198,7 @@ resource "azurerm_subnet_network_security_group_association" "nsg-assoc" {
 
 resource "azurerm_linux_virtual_machine" "web" {
   count                           = length(var.location)
-  name                            = "web0${count.index + 1}"
+  name                            = "${var.init}-web0${count.index + 1}"
   resource_group_name = azurerm_resource_group.main.name
   location            = azurerm_resource_group.main.location
   size                            = "Standard_D2s_v3"
@@ -226,7 +226,7 @@ resource "azurerm_linux_virtual_machine" "web" {
 
 resource "azurerm_windows_virtual_machine" "dns" {
   count = length(var.location)
-  name                = "dns0${count.index + 1}"
+  name                = "${var.init}-dns0${count.index + 1}"
   resource_group_name = azurerm_resource_group.main.name
   location            = element (var.location, count.index)
   size                = "Standard_F2"
@@ -264,7 +264,7 @@ resource "azurerm_virtual_machine_extension" "dns_install" {
 }
 
 resource "azurerm_application_gateway" "appgw_web" {
-  name                = "appgw-kv"
+  name                = "${var.init}-appgw-kv"
   resource_group_name = azurerm_resource_group.main.name
   location            = azurerm_resource_group.main.location
 
@@ -328,7 +328,7 @@ resource "azurerm_network_interface_application_gateway_backend_address_pool_ass
 }
 
 resource "azurerm_key_vault" "kv" {
-  name                        = "kv-appgw"
+  name                        = "${var.init}-kv-appgw"
   resource_group_name = azurerm_resource_group.main.name
   location            = var.location[1]
   enabled_for_disk_encryption = true
@@ -369,7 +369,7 @@ resource "azurerm_key_vault_access_policy" "appgwkv_access" {
 }
 
 resource "azurerm_app_service_plan" "appserviceplan" {
-  name                = "webapp-kv-asp"
+  name                = "${var.init}-webapp-kv-asp"
   resource_group_name = azurerm_resource_group.main.name
   location            = var.location[1]
   kind = "Linux"  
@@ -380,7 +380,7 @@ resource "azurerm_app_service_plan" "appserviceplan" {
 }
 
 resource "azurerm_app_service" "webapp" {
-  name                = "webapp-kv"
+  name                = "${var.init}-webapp-kv"
   resource_group_name = azurerm_resource_group.main.name
   location            = var.location[1]
   app_service_plan_id = azurerm_app_service_plan.appserviceplan.id

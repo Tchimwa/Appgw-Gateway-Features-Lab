@@ -5,6 +5,11 @@ variable "location" {
   ]
 }
 
+variable "init" {
+  type = string
+  description = "Initials"
+}
+
 variable "cert-password" {
   type        = string
   default     = "Lemannequingros1989#"
