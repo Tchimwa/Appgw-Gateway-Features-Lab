@@ -62,9 +62,9 @@ az network application-gateway probe create --gateway-name "tcs-appgw-kv" \
 
 # Update HTTP settings to use a new probe
 az network application-gateway http-settings update --gateway-name "tcs-appgw-kv" \
-                                                                                    --name "appgwkv-https-settings" \
-                                                                                    --probe "https-probe" \
-                                                                                    --resource-group "tcs-appgwkv-rg" \
+                                                    --name "appgwkv-https-settings" \
+                                                    --probe "https-probe" \
+                                                    --resource-group "tcs-appgwkv-rg" \
 ```
 
 - HTTP probe
@@ -85,9 +85,9 @@ az network application-gateway probe create --gateway-name "tcs-appgw-kv" \
 
 # Update HTTP settings to use a new probe
 az network application-gateway http-settings update --gateway-name "tcs-appgw-kv" \
-                                                                                    --name "appgwkv-http-settings" \
-                                                                                    --probe "http-probe" \
-                                                                                    --resource-group "tcs-appgwkv-rg" \
+                                                    --name "appgwkv-http-settings" \
+                                                    --probe "http-probe" \
+                                                    --resource-group "tcs-appgwkv-rg" \
 ```
 
 ### Webapp integration with Application Gateway
