@@ -36,7 +36,7 @@ resource "azurerm_virtual_network" "vnet" {
 
 resource "azurerm_subnet" "apps" {
   count = length(var.location)
-  name                 = "appgw-sbnt"
+  name                 = "apps-sbnt"
   virtual_network_name = element(azurerm_virtual_network.vnet.*.name, count.index)
   resource_group_name  = azurerm_resource_group.main.name
   address_prefixes     = [
@@ -64,7 +64,7 @@ resource "azurerm_subnet" "vm" {
 
 resource "azurerm_subnet" "pe" {
   count = length(var.location)
-  name                 = "pe-sbnt"
+  name                 = "pe-dns-sbnt"
   virtual_network_name = element(azurerm_virtual_network.vnet.*.name, count.index)
   resource_group_name  = azurerm_resource_group.main.name
   address_prefixes     = [
@@ -273,7 +273,6 @@ resource "azurerm_application_gateway" "appgw_web" {
     name     = "Standard_v2"
     tier     = "Standard_v2"
     capacity = 2
-
   }
 
   gateway_ip_configuration {
@@ -286,6 +285,11 @@ resource "azurerm_application_gateway" "appgw_web" {
     port = 80
   }
 
+  frontend_port {
+    name = "https-443"
+    port = 443
+  }
+
   frontend_ip_configuration {
     name = "appgwkv-feconf"
     public_ip_address_id = azurerm_public_ip.appgw-pip.id
@@ -295,12 +299,27 @@ resource "azurerm_application_gateway" "appgw_web" {
     name = "appgwkv-pool"
   }
 
-  backend_http_settings {
-    name                  = "appgwkv-settings"
+  ssl_certificate {
+    name = "wildcard_ced-sougang_com"
+    key_vault_secret_id = azurerm_key_vault_certificate.kv_cert.secret_id
+  }
+
+    backend_http_settings {
+    name                  = "appgwkv-http-settings"
     cookie_based_affinity = "Disabled"
     port                  = 80
-    protocol              = "Http"
-    request_timeout       = 60
+    protocol              = "Https"
+    request_timeout       = 60    
+    pick_host_name_from_backend_address = false
+  }
+
+  backend_http_settings {
+    name                  = "appgwkv-https-settings"
+    cookie_based_affinity = "Disabled"
+    port                  = 443
+    protocol              = "Https"
+    request_timeout       = 60    
+    pick_host_name_from_backend_address = false
   }
 
   http_listener {
@@ -308,8 +327,17 @@ resource "azurerm_application_gateway" "appgw_web" {
     frontend_ip_configuration_name = "appgwkv-feconf"
     frontend_port_name             = "http-80"
     protocol                       = "Http"
-
+    host_names = [ "*.ced-sougang.com" ]    
   }
+
+    http_listener {
+    name                           = "https-traffic"
+    frontend_ip_configuration_name = "appgwkv-feconf"
+    frontend_port_name             = "https-443"
+    protocol                       = "Https"
+    host_names = [ "*.ced-sougang.com" ] 
+    ssl_certificate_name = "wildcard_ced-sougang_com"
+  }  
 
   request_routing_rule {
     name                       = "appgwkv-http-rule"
@@ -317,7 +345,32 @@ resource "azurerm_application_gateway" "appgw_web" {
     http_listener_name         = "http-traffic"
     backend_address_pool_name  = "appgwkv-pool"
     backend_http_settings_name = "appgwkv-settings"
+    priority = "100"
   }
+
+  request_routing_rule {
+    name                       = "appgwkv-https-rule"
+    rule_type                  = "Basic"
+    http_listener_name         = "https-traffic"
+    backend_address_pool_name  = "appgwkv-pool"
+    backend_http_settings_name = "appgwkv-settings"
+    priority = "200"
+  }  
+
+  lifecycle {
+    ignore_changes = [
+      backend_address_pool,
+      backend_http_settings,
+      frontend_port,
+      http_listener,
+      probe,
+      request_routing_rule,
+      url_path_map,
+      ssl_certificate,
+      redirect_configuration,
+      autoscale_configuration
+    ]
+  }  
 }
 
 resource "azurerm_network_interface_application_gateway_backend_address_pool_association" "appgwnic-assoc" {
@@ -340,7 +393,7 @@ resource "azurerm_key_vault" "kv" {
 }
 
 resource "azurerm_key_vault_certificate" "kv_cert" {
-  name         = "wilcard-cert"
+  name         = "${var.init}-wilcard-cert"
   key_vault_id = azurerm_key_vault.kv.id
 
   certificate {
@@ -350,9 +403,58 @@ resource "azurerm_key_vault_certificate" "kv_cert" {
 }
 
 resource "azurerm_user_assigned_identity" "appgw_umi" {
-  name                = "appgw-umi"
+  name                = "${var.init}-appgw-umi"
   resource_group_name = azurerm_resource_group.main.name
   location            = var.location[1]
+}
+
+resource "azurerm_key_vault_access_policy" "user_access" {
+  key_vault_id = azurerm_key_vault.kv.id
+  tenant_id    = data.azurerm_client_config.current.tenant_id
+  object_id    = data.azurerm_client_config.current.object_id
+  
+  key_permissions = [
+      "backup",
+      "create",
+      "decrypt",
+      "delete",
+      "encrypt",
+      "get",
+      "import",
+      "list",
+      "purge",
+      "recover",
+      "restore",
+      "sign",
+      "unwrapKey",
+      "update",
+      "verify",
+      "wrapKey",
+  ]  
+  secret_permissions = [
+      "backup",
+      "delete",
+      "get",
+      "list",
+      "purge",
+      "recover",
+      "restore",
+      "set",
+  ]
+  certificate_permissions = [ 
+      "create",
+      "delete",
+      "deleteissuers",
+      "get",
+      "getissuers",
+      "import",
+      "list",
+      "listissuers",
+      "managecontacts",
+      "manageissuers",
+      "setissuers",
+      "update",
+  ]
 }
 
 resource "azurerm_key_vault_access_policy" "appgwkv_access" {
@@ -366,26 +468,32 @@ resource "azurerm_key_vault_access_policy" "appgwkv_access" {
   secret_permissions = [
     "Get", "List",
   ]
+  certificate_permissions = [ 
+    "Get", "list" ]
 }
 
 resource "azurerm_app_service_plan" "appserviceplan" {
   name                = "${var.init}-webapp-kv-asp"
   resource_group_name = azurerm_resource_group.main.name
   location            = var.location[1]
-  kind = "Linux"  
+  kind                = "Linux"
+  reserved         =   true
+
   sku {
-    tier = "Free"
-    size = "F1"
+    tier = "Standard"
+    size = "S1"
   }
 }
 
 resource "azurerm_app_service" "webapp" {
-  name                = "${var.init}-webapp-kv"
+  name                = "${var.init}-webapp"
   resource_group_name = azurerm_resource_group.main.name
   location            = var.location[1]
   app_service_plan_id = azurerm_app_service_plan.appserviceplan.id
+
   site_config {
-    linux_fx_version = "DOTNETCORE|3.1"
+    dotnet_framework_version = "v5.0"
+    health_check_path = "/"
   }
 }
 

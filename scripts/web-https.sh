@@ -43,7 +43,7 @@ cat << EOM > /var/www/w3/html/index.html
   <!-- BEGIN -->
     <center><h2>Fellow Network Engineers </h2></center>
   <center>Welcome to the LABTIME Session 3!</center>
-  <center><h2> This is www.ced-sougang.com! </h2></center>
+  <center><h2> This is <font color="blue">www.ced-sougang.com! </font></h2></center>
   <center><h2>from Tchimwa!</h2></center>
   <!-- END -->
     </div>
@@ -59,7 +59,7 @@ cat << EOM > /var/www/netdata/html/index.html
   <!-- BEGIN -->
     <center><h2>Fellow Network Engineers </h2></center>
   <center>Welcome to the LABTIME Session 3!</center>
-  <center><h2> This is netdata.ced-sougang.com! </h2></center>
+  <center><h2> This is <font color="blue">netdata.ced-sougang.com! </font></h2></center>
   <center><h2>from Tchimwa!</h2></center>
   <!-- END -->
     </div>
@@ -75,7 +75,7 @@ cat << EOM >  /var/www/labtime/html/index.html
   <!-- BEGIN -->
     <center><h2>Fellow Network Engineers </h2></center>
   <center>Welcome to the LABTIME Session 3!</center>
-  <center><h2> This is labtime.ced-sougang.com! </h2></center>
+  <center><h2> This is <font color="blue">labtime.ced-sougang.com! </font></h2></center>
   <center><h2>from Tchimwa!</h2></center>
   <!-- END -->
     </div>
@@ -83,7 +83,7 @@ cat << EOM >  /var/www/labtime/html/index.html
 </html>
 EOM
 
-cat << EOM >  /etc/nginx/sites-available/ced-sougang.com.conf
+cat << EOM >  /etc/nginx/sites-available/www.ced-sougang.com.conf
 server {
         listen 80;
         listen [::]:80;
@@ -164,10 +164,10 @@ ln -s /etc/nginx/sites-available/netdata.ced-sougang.com.conf /etc/nginx/sites-e
 ln -s /etc/nginx/sites-available/ced-sougang.com.conf /etc/nginx/sites-enabled/ced-sougang.com.conf
 
 #Setting the hosts file for DNS resolution
-ip=$(echo `ifconfig eth0 2>/dev/null|awk '/inet / {print $2}'|sed 's/addr://'`)
-echo "$ip ced-sougang.com" | tee -a /etc/hosts
-echo "$ip netdata.ced-sougang.com" | tee -a /etc/hosts
-echo "$ip labtime.ced-sougang.com" | tee -a /etc/hosts
+#ip=$(echo `ifconfig eth0 2>/dev/null|awk '/inet / {print $2}'|sed 's/addr://'`)
+echo "127.0.0.1 www.ced-sougang.com" | tee -a /etc/hosts
+echo "127.0.0.1 netdata.ced-sougang.com" | tee -a /etc/hosts
+echo "127.0.0.1 labtime.ced-sougang.com" | tee -a /etc/hosts
 
 #Restarting NGINX to apply the configuration
 systemctl restart nginx
