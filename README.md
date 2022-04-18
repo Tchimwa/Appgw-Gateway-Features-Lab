@@ -358,6 +358,19 @@ az network application-gateway rule create \
                       --priority 20
 ```
 
+The successful test below is showing how the request from _http://webapp.ced-sougang.com_ is getting permanently redirected to _https://webapp.ced-sougang.com_ with the HTTP response 301
+
+```typescript
+C:\Users\tcsougan>curl -I http://webapp.ced-sougang.com
+HTTP/1.1 301 Moved Permanently
+Server: Microsoft-Azure-Application-Gateway/v2
+Date: Mon, 18 Apr 2022 07:02:57 GMT
+Content-Type: text/html
+Content-Length: 195
+Connection: keep-alive
+Location: https://webapp.ced-sougang.com/
+```
+
 ### NSG with your AppGW v2 SKU
 
 Following the public [documentation](https://docs.microsoft.com/en-us/azure/application-gateway/configuration-infrastructure?msclkid=bbfb3521bee111ec8a169d9c0ac3e41c#network-security-groups), beside of the default rules already created, there should be the routes to allow the Gateway Manager for teh Azure infrastructure communication (Probe traffic is included here), then the rules to allow the traffic on the Ports you are planning to expose publicly ( usually 80 and 443). No other outbound rules that deny any outbound connectivity should be created.
