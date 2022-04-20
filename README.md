@@ -14,7 +14,7 @@ In order to complete this lab, there are quite of resources needed:
 - Terraform
 - Git
 - Knowing how application gateway works
-- [PSPING](https://docs.microsoft.com/en-us/sysinternals/downloads/psping) on the VM **dns-01**
+- Install [PSPING](https://docs.microsoft.com/en-us/sysinternals/downloads/psping) on the VM **dns-01**
 
 Different case scenarios will be implemented, few tasks and questions will be covered to make sure that we all understand the concept and the configuration. Below is the architecture we'll be working with and it will be changing based on the scenario studied.
 
@@ -201,6 +201,103 @@ Here we'll review the requirements and the most important points when it comes t
 - Explain the access policies configured on the KeyVault
 - What is the goal of the service endpoint configured while restricting access to the AppGW?
 
+### Redirection feature - HTTP to HTTPS on the WebApp listener
+
+Usually redirection from HTTP to HTTPS is done through 3 steps since the HTTPS was already created:
+
+- Adding the HTTPS listener
+
+```typescript
+az network application-gateway http-listener create \
+                      --name "webapp-http" \
+                      --frontend-ip "appgwkv-feconf" \
+                      --frontend-port "http-80" \
+                      --resource-group "tcs-appgwkv-rg" \
+                      --gateway-name "tcs-appgw"
+```
+
+- Add the redirection configuration
+
+```typescript
+az network application-gateway redirect-config create \
+                        --name "webapp-http_to_https" \
+                        --gateway-name "tcs-appgw" \
+                        --resource-group "tcs-appgwkv-rg" \
+                        --type Permanent \
+                        --target-listener "webapp-https" \
+                        --include-path true \
+                        --include-query-string true
+```
+
+- Create the routing rule
+
+```typescript
+az network application-gateway rule create \
+                      --gateway-name "tcs-appgw" \
+                      --name "webapp-redirect" \
+                      --resource-group "tcs-appgwkv-rg" \
+                      --http-listener "webapp-http" \
+                      --rule-type Basic \
+                      --redirect-config "webapp-http_to_https" \
+                      --priority 20
+```
+
+The successful test below is showing how the request from _<http://tcs-webapp.ced-sougang.com>_ is getting permanently redirected to _<https://tcs-webapp.ced-sougang.com>_ with the HTTP response 301
+
+```typescript
+C:\Users\tcsougan>curl -I http://webapp.ced-sougang.com
+HTTP/1.1 301 Moved Permanently
+Server: Microsoft-Azure-Application-Gateway/v2
+Date: Mon, 18 Apr 2022 07:02:57 GMT
+Content-Type: text/html
+Content-Length: 195
+Connection: keep-alive
+Location: https://webapp.ced-sougang.com/
+```
+
+### NSG with your AppGW v2 SKU
+
+Following the public [documentation](https://docs.microsoft.com/en-us/azure/application-gateway/configuration-infrastructure?msclkid=bbfb3521bee111ec8a169d9c0ac3e41c#network-security-groups), beside of the default rules already created, there should be the routes to allow the Gateway Manager for teh Azure infrastructure communication (Probe traffic is included here), then the rules to allow the traffic on the Ports you are planning to expose publicly ( usually 80 and 443). No other outbound rules that deny any outbound connectivity should be created.
+
+- Create the NSG
+
+```typescript
+az network nsg create --resource-group "tcs-appgwkv-rg" --name "tcs-appgw-nsg"
+```
+
+- Create the rules
+
+```typescript
+az network nsg rule create --resource-group "tcs-appgwkv-rg" --nsg-name "tcs-appgw-nsg" --name AppGWv2-GMRules --priority 400 \
+                            --source-address-prefixes "*" --source-port-ranges "*" \
+                            --destination-address-prefixes '*' --destination-port-ranges "65200-65535" --access "Allow" \
+                            --protocol Tcp --description "Allow Azure Infrastructure Communication"
+
+az network nsg rule create --resource-group "tcs-appgwkv-rg" --nsg-name "tcs-appgw-nsg" --name "HTTP-Rule" --priority 200 \
+                            --source-address-prefixes "*" --source-port-ranges "*" \
+                            --destination-address-prefixes '*' --destination-port-ranges "80" --access "Allow" \
+                            --protocol Tcp --description "Allow HTTP Traffic"
+
+az network nsg rule create --resource-group "tcs-appgwkv-rg" --nsg-name "tcs-appgw-nsg" --name "HTTPS-Rule" --priority 180 \
+                            --source-address-prefixes "*" --source-port-ranges "*" \
+                            --destination-address-prefixes '*' --destination-port-ranges "443" --access "Allow" \
+                            --protocol Tcp --description "Allow HTTPS Traffic"
+```
+
+- Associate the NSG to the AppGW subnet
+
+```typescript
+az network vnet subnet update --name "apps-sbnt" --vnet-name "appgwkv-vnet-01" \ 
+                            --resource-group "tcs-appgwkv-rg" \
+                            --network-security-group "tcs-appgw-nsg"
+```
+
+### Rewrite rules
+
+- Let's set up a rewrite rule to remove the header named "Server" from the Response Header, and apply it on all the webapp rules
+- Let's set up a rewrite rule to add the custom header named "EngineerName" to the Response Header, and apply it on all the appgwkv rules
+- Use the Developer Tools to verify the rules before and after applying them to the AppGW.
+
 ### Implications with the private endpoint on the KeyVault and the WebApp
 
 I've noticed some lack of misunderstanding with customers when it comes to associating the AppGW with the KV and the webapp using the private endpoint. Here, we will go through couple scenarios to demonstrate what is actually happening for each scenario.
@@ -239,6 +336,8 @@ nslookup tcs-webapp.azurewebsites.net
 
 - From the AppGW page, use the **Connection Troubleshoot** to test the traffic, and see if the AppGW is resolving to Private Endpoint of each resource.
 - From the "webapp-probe", you might have to make a change to trigger the update.
+
+![OriginalScenario](https://github.com/Tchimwa/Appgw-Keyvault-Private-Endpoint-With-Custom-DNS/blob/main/images/OriginalScenario.png)
 
 #### Custom DNS scenarios
 
@@ -342,102 +441,5 @@ Since the PE were created on a different VNET which is **appgwkv-vnet-02**, the 
 
 - Let's check the probes to see if the probe "webapp-probe" is back to the Healthy State.
 - Use the Connection Troubleshoot to check if the AppGW is resolving to the WebApp Private Endpoint IP Address.
-
-### Redirection feature - HTTP to HTTPS on the WebApp listener
-
-Usually redirection from HTTP to HTTPS is done through 3 steps since the HTTPS was already created:
-
-- Adding the HTTPS listener
-
-```typescript
-az network application-gateway http-listener create \
-                      --name "webapp-http" \
-                      --frontend-ip "appgwkv-feconf" \
-                      --frontend-port "http-80" \
-                      --resource-group "tcs-appgwkv-rg" \
-                      --gateway-name "tcs-appgw"
-```
-
-- Add the redirection configuration
-
-```typescript
-az network application-gateway redirect-config create \
-                        --name "webapp-http_to_https" \
-                        --gateway-name "tcs-appgw" \
-                        --resource-group "tcs-appgwkv-rg" \
-                        --type Permanent \
-                        --target-listener "webapp-https" \
-                        --include-path true \
-                        --include-query-string true
-```
-
-- Create the routing rule
-
-```typescript
-az network application-gateway rule create \
-                      --gateway-name "tcs-appgw" \
-                      --name "webapp-redirect" \
-                      --resource-group "tcs-appgwkv-rg" \
-                      --http-listener "webapp-http" \
-                      --rule-type Basic \
-                      --redirect-config "webapp-http_to_https" \
-                      --priority 20
-```
-
-The successful test below is showing how the request from _<http://tcs-webapp.ced-sougang.com>_ is getting permanently redirected to _<https://tcs-webapp.ced-sougang.com>_ with the HTTP response 301
-
-```typescript
-C:\Users\tcsougan>curl -I http://webapp.ced-sougang.com
-HTTP/1.1 301 Moved Permanently
-Server: Microsoft-Azure-Application-Gateway/v2
-Date: Mon, 18 Apr 2022 07:02:57 GMT
-Content-Type: text/html
-Content-Length: 195
-Connection: keep-alive
-Location: https://webapp.ced-sougang.com/
-```
-
-### NSG with your AppGW v2 SKU
-
-Following the public [documentation](https://docs.microsoft.com/en-us/azure/application-gateway/configuration-infrastructure?msclkid=bbfb3521bee111ec8a169d9c0ac3e41c#network-security-groups), beside of the default rules already created, there should be the routes to allow the Gateway Manager for teh Azure infrastructure communication (Probe traffic is included here), then the rules to allow the traffic on the Ports you are planning to expose publicly ( usually 80 and 443). No other outbound rules that deny any outbound connectivity should be created.
-
-- Create the NSG
-
-```typescript
-az network nsg create --resource-group "tcs-appgwkv-rg" --name "tcs-appgw-nsg"
-```
-
-- Create the rules
-
-```typescript
-az network nsg rule create --resource-group "tcs-appgwkv-rg" --nsg-name "tcs-appgw-nsg" --name AppGWv2-GMRules --priority 400 \
-                            --source-address-prefixes "*" --source-port-ranges "*" \
-                            --destination-address-prefixes '*' --destination-port-ranges "65200-65535" --access "Allow" \
-                            --protocol Tcp --description "Allow Azure Infrastructure Communication"
-
-az network nsg rule create --resource-group "tcs-appgwkv-rg" --nsg-name "tcs-appgw-nsg" --name "HTTP-Rule" --priority 200 \
-                            --source-address-prefixes "*" --source-port-ranges "*" \
-                            --destination-address-prefixes '*' --destination-port-ranges "80" --access "Allow" \
-                            --protocol Tcp --description "Allow HTTP Traffic"
-
-az network nsg rule create --resource-group "tcs-appgwkv-rg" --nsg-name "tcs-appgw-nsg" --name "HTTPS-Rule" --priority 180 \
-                            --source-address-prefixes "*" --source-port-ranges "*" \
-                            --destination-address-prefixes '*' --destination-port-ranges "443" --access "Allow" \
-                            --protocol Tcp --description "Allow HTTPS Traffic"
-```
-
-- Associate the NSG to the AppGW subnet
-
-```typescript
-az network vnet subnet update --name "apps-sbnt" --vnet-name "appgwkv-vnet-01" \ 
-                            --resource-group "tcs-appgwkv-rg" \
-                            --network-security-group "tcs-appgw-nsg"
-```
-
-### Rewrite rules
-
-- Let's set up a rewrite rule to remove the header named "Server" from the Response Header, and apply it on all the webapp rules
-- Let's set up a rewrite rule to add the custom header named "EngineerName" to the Response Header, and apply it on all the appgwkv rules
-- Use the Developer Tools to verify the rules before and after applying them to the AppGW.
 
 Application Gateway has some quite interesting features. Here, we have chosen to work on a few that our customers struggle the most with. They will be more labs related to AppGw in the future, but in the meantime, I hope you have learned something from this one.
