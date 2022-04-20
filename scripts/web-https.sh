@@ -30,7 +30,7 @@ sudo mkdir -p /var/www/w3/html
 sudo mkdir -p /var/www/netdata/html
 sudo mkdir -p /var/www/labtime/html
 
-sudo touch /etc/nginx/sites-available/ced-sougang.com.conf
+sudo touch /etc/nginx/sites-available/www.ced-sougang.com.conf
 sudo touch /etc/nginx/sites-available/netdata.ced-sougang.com.conf
 sudo touch /etc/nginx/sites-available/labtime.ced-sougang.com.conf
 
