@@ -264,7 +264,7 @@ resource "azurerm_virtual_machine_extension" "dns_install" {
 }
 
 resource "azurerm_application_gateway" "appgw_web" {
-  name                = "${var.init}-appgw-kv"
+  name                = "${var.init}-appgw"
   resource_group_name = azurerm_resource_group.main.name
   location            = azurerm_resource_group.main.location
 
@@ -299,6 +299,11 @@ resource "azurerm_application_gateway" "appgw_web" {
     name = "appgwkv-pool"
   }
 
+  identity {
+    type = "UserAssigned"
+    identity_ids = [azurerm_user_assigned_identity.appgw_umi.id]
+  }
+
   ssl_certificate {
     name = "wildcard_ced-sougang_com"
     key_vault_secret_id = azurerm_key_vault_certificate.kv_cert.secret_id
@@ -308,7 +313,7 @@ resource "azurerm_application_gateway" "appgw_web" {
     name                  = "appgwkv-http-settings"
     cookie_based_affinity = "Disabled"
     port                  = 80
-    protocol              = "Https"
+    protocol              = "Http"
     request_timeout       = 60    
     pick_host_name_from_backend_address = false
   }
@@ -344,7 +349,7 @@ resource "azurerm_application_gateway" "appgw_web" {
     rule_type                  = "Basic"
     http_listener_name         = "http-traffic"
     backend_address_pool_name  = "appgwkv-pool"
-    backend_http_settings_name = "appgwkv-settings"
+    backend_http_settings_name = "appgwkv-http-settings"
     priority = "100"
   }
 
@@ -353,7 +358,7 @@ resource "azurerm_application_gateway" "appgw_web" {
     rule_type                  = "Basic"
     http_listener_name         = "https-traffic"
     backend_address_pool_name  = "appgwkv-pool"
-    backend_http_settings_name = "appgwkv-settings"
+    backend_http_settings_name = "appgwkv-https-settings"
     priority = "200"
   }  
 
@@ -381,19 +386,19 @@ resource "azurerm_network_interface_application_gateway_backend_address_pool_ass
 }
 
 resource "azurerm_key_vault" "kv" {
-  name                        = "${var.init}-kv-appgw"
+  name                        = "${var.init}-appgw-kv"
   resource_group_name = azurerm_resource_group.main.name
   location            = var.location[1]
-  enabled_for_disk_encryption = true
   tenant_id                   = data.azurerm_client_config.current.tenant_id
-  soft_delete_retention_days  = 7
-  purge_protection_enabled    = false
+  enabled_for_disk_encryption = true
+  enabled_for_deployment = true
+  enabled_for_template_deployment = true
 
   sku_name = "standard"
 }
 
 resource "azurerm_key_vault_certificate" "kv_cert" {
-  name         = "${var.init}-wilcard-cert"
+  name         = "${var.init}-wildcard"
   key_vault_id = azurerm_key_vault.kv.id
 
   certificate {
@@ -411,7 +416,7 @@ resource "azurerm_user_assigned_identity" "appgw_umi" {
 resource "azurerm_key_vault_access_policy" "user_access" {
   key_vault_id = azurerm_key_vault.kv.id
   tenant_id    = data.azurerm_client_config.current.tenant_id
-  object_id    = data.azurerm_client_config.current.object_id
+  object_id    = data.azurerm_client_config.current.object_id  
   
   key_permissions = [
       "backup",
@@ -463,13 +468,13 @@ resource "azurerm_key_vault_access_policy" "appgwkv_access" {
   object_id    = azurerm_user_assigned_identity.appgw_umi.principal_id
   
   key_permissions = [
-    "Get", "List",
+    "get", "list",
   ]  
   secret_permissions = [
-    "Get", "List",
+    "get", "list",
   ]
   certificate_permissions = [ 
-    "Get", "list" ]
+    "get", "list" ]
 }
 
 resource "azurerm_app_service_plan" "appserviceplan" {

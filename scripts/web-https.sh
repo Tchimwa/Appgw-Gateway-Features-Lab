@@ -158,16 +158,21 @@ server {
 }
 EOM
 
-#Enabling the websites
-ln -s /etc/nginx/sites-available/labtime.ced-sougang.com.conf /etc/nginx/sites-enabled/labtime.ced-sougang.com.conf
-ln -s /etc/nginx/sites-available/netdata.ced-sougang.com.conf /etc/nginx/sites-enabled/netdata.ced-sougang.com.conf
-ln -s /etc/nginx/sites-available/ced-sougang.com.conf /etc/nginx/sites-enabled/ced-sougang.com.conf
-
 #Setting the hosts file for DNS resolution
 #ip=$(echo `ifconfig eth0 2>/dev/null|awk '/inet / {print $2}'|sed 's/addr://'`)
 echo "127.0.0.1 www.ced-sougang.com" | tee -a /etc/hosts
 echo "127.0.0.1 netdata.ced-sougang.com" | tee -a /etc/hosts
 echo "127.0.0.1 labtime.ced-sougang.com" | tee -a /etc/hosts
+
+#Completing the config files
+sed -i 's/try_files /try_files $uri $uri/' /etc/nginx/sites-available/labtime.ced-sougang.com.conf
+sed -i 's/try_files /try_files $uri $uri/' /etc/nginx/sites-available/netdata.ced-sougang.com.conf
+sed -i 's/try_files /try_files $uri $uri/' /etc/nginx/sites-available/www.ced-sougang.com.conf
+
+#Enabling the websites
+ln -s /etc/nginx/sites-available/labtime.ced-sougang.com.conf /etc/nginx/sites-enabled/labtime.ced-sougang.com.conf
+ln -s /etc/nginx/sites-available/netdata.ced-sougang.com.conf /etc/nginx/sites-enabled/netdata.ced-sougang.com.conf
+ln -s /etc/nginx/sites-available/www.ced-sougang.com.conf /etc/nginx/sites-enabled/www.ced-sougang.com.conf
 
 #Restarting NGINX to apply the configuration
 systemctl restart nginx

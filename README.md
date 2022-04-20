@@ -14,6 +14,7 @@ In order to complete this lab, there are quite of resources needed:
 - Terraform
 - Git
 - Knowing how application gateway works
+- [PSPING](https://docs.microsoft.com/en-us/sysinternals/downloads/psping) on the VM **dns-01**
 
 Different case scenarios will be implemented, few tasks and questions will be covered to make sure that we all understand the concept and the configuration. Below is the architecture we'll be working with and it will be changing based on the scenario studied.
 
@@ -33,6 +34,12 @@ terraform apply
 
 ## Case scenarios
 
+### Assumptions
+
+- Both DNS servers already have 169.63.29.16 as forwarder
+- The initials used in this lab are mine **"tcs"**, so yours will be different and your resources' name as well
+- The certificate used here is my personal certificate and I manage the CN domain name. You can use yours and make some changes on the script and the configuration
+
 ### End-to-end TLS Termination with a Multi-site listener
 
 Looking at the default configuration, we have an End-to-End SSL termination with a multi-site listener named "_https-traffic_", the Backend HTTP settings "_appgwkv-https-settings_" using the routing rule "_appgwkv-https-rule_" and connected to the backend pool  "_appgwkv-pool_" that is currently hosting couple web servers serving 3 hostnames : _**www.ced-sougang.com, netdata.ced-sougang.com, labtime.ced-sougang.com**_.
@@ -48,7 +55,7 @@ Looking at the default configuration, we have an End-to-End SSL termination with
 
 ```typescript
 # Create the HTTPS probe
-az network application-gateway probe create --gateway-name "tcs-appgw-kv" \
+az network application-gateway probe create --gateway-name "tcs-appgw" \
                                             --name "https-probe" \
                                             --path "/" \
                                             --protocol Https \
@@ -58,21 +65,21 @@ az network application-gateway probe create --gateway-name "tcs-appgw-kv" \
                                             --interval 30 \
                                             --match-status-codes "200-399" \
                                             --threshold 3 \
-                                            --timeout 30 \
+                                            --timeout 30
 
 # Update HTTP settings to use a new probe
-az network application-gateway http-settings update --gateway-name "tcs-appgw-kv" \
+az network application-gateway http-settings update --gateway-name "tcs-appgw" \
                                                     --name "appgwkv-https-settings" \
                                                     --probe "https-probe" \
-                                                    --enable-probe true
-                                                    --resource-group "tcs-appgwkv-rg" \
+                                                    --enable-probe true \
+                                                    --resource-group "tcs-appgwkv-rg" 
 ```
 
 - HTTP probe
 
 ```typescript
 # Create the HTTP probe
-az network application-gateway probe create --gateway-name "tcs-appgw-kv" \
+az network application-gateway probe create --gateway-name "tcs-appgw" \
                                             --name "http-probe" \
                                             --path "/" \
                                             --protocol Http \
@@ -82,14 +89,14 @@ az network application-gateway probe create --gateway-name "tcs-appgw-kv" \
                                             --interval 30 \
                                             --match-status-codes "200-399" \
                                             --threshold 3 \
-                                            --timeout 30 \
+                                            --timeout 30
 
 # Update HTTP settings to use a new probe
-az network application-gateway http-settings update --gateway-name "tcs-appgw-kv" \
+az network application-gateway http-settings update --gateway-name "tcs-appgw" \
                                                     --name "appgwkv-http-settings" \
                                                     --probe "http-probe" \
-                                                    --enable-probe true
-                                                    --resource-group "tcs-appgwkv-rg" \
+                                                    --enable-probe true \
+                                                    --resource-group "tcs-appgwkv-rg"
 ```
 
 ### Webapp integration with Application Gateway
@@ -99,10 +106,10 @@ az network application-gateway http-settings update --gateway-name "tcs-appgw-kv
 Here, we'll be adding the webapp to the backend pool using his hostname:
 
 ```typescript
-az network application-gateway address-pool create --gateway-name "tcs-appgw-kv" \
+az network application-gateway address-pool create --gateway-name "tcs-appgw" \
                                                    --name "webapp-pool" \
                                                    --resource-group "tcs-appgwkv-rg" \
-                                                   --servers "tcs-webapp.azurewebsites.net" \
+                                                   --servers "tcs-webapp.azurewebsites.net" 
 ```
 
 #### Create the backend settings and the probe
@@ -110,7 +117,7 @@ az network application-gateway address-pool create --gateway-name "tcs-appgw-kv"
 The HTTPS probe:
 
 ```typescript
-az network application-gateway probe create --gateway-name "tcs-appgw-kv" \
+az network application-gateway probe create --gateway-name "tcs-appgw" \
                                             --name "webapp-probe" \
                                             --path "/" \
                                             --protocol Https \
@@ -125,7 +132,7 @@ az network application-gateway probe create --gateway-name "tcs-appgw-kv" \
 The backend settings here will be set up with HTTPS as it is currently the protocol supported by the webapp.
 
 ```typescript
-az network application-gateway http-settings create --gateway-name "tcs-appgw-kv" \
+az network application-gateway http-settings create --gateway-name "tcs-appgw" \
                                                     --name "webapp-https-settings" \
                                                     --port 443 \
                                                     --resource-group "tcs-appgwkv-rg" \
@@ -142,19 +149,19 @@ az network application-gateway http-settings create --gateway-name "tcs-appgw-kv
 Adding a HTTPS listener attached to the public Frontend IP, and replace your initials in the commands.
 
 ```typescript
-az network application-gateway http-listener create --frontend-port port_443 \
-                                                    --gateway-name "tcs-appgw-kv" \
+az network application-gateway http-listener create --frontend-port "https-443" \
+                                                    --gateway-name "tcs-appgw" \
                                                     --name "webapp-https" \
                                                     --resource-group "tcs-appgwkv-rg" \
                                                     --frontend-ip "appgwkv-feconf" \
-                                                    --host-name "<initials>-webapp.ced-sougang.com" \
+                                                    --host-name "tcs-webapp.ced-sougang.com" \
                                                     --ssl-cert wildcard_ced-sougang_com
 ```
 
 Adding the routing rule with the priority 500.
 
 ```typescript
-az network application-gateway rule create --gateway-name "tcs-appgw-kv" \
+az network application-gateway rule create --gateway-name "tcs-appgw" \
                                            --name "webapp-rule" \
                                            --resource-group "tcs-appgwkv-rg" \
                                            --address-pool "webapp-pool" \
@@ -175,7 +182,7 @@ az network application-gateway rule create --gateway-name "tcs-appgw-kv" \
 
 ```typescript
 az network application-gateway rule update  --resource-group "tcs-appgwkv-rg" \
-                                                                        --gateway-name "tcs-appgw-kv" \
+                                                                        --gateway-name "tcs-appgw" \
                                                                         --name "webapp-rule" \
                                                                         --priority 10 
 ```
@@ -190,13 +197,13 @@ Here we'll review the requirements and the most important points when it comes t
 
 **Tasks:**
 
-- Restrict the network access to the KV to your Application Gateway and your personal computer
+- Restrict the network access to the KV to your Application Gateway subnet
 - Explain the access policies configured on the KeyVault
 - What is the goal of the service endpoint configured while restricting access to the AppGW?
 
 ### Implications with the private endpoint on the KeyVault and the WebApp
 
-I've noticed some deep level of misunderstanding with customers when it comes to associating the AppGW with the KV and the webapp using the private endpoint. Here, we will go through couple scenarios to demonstrate what is actually happening for each scenario.
+I've noticed some lack of misunderstanding with customers when it comes to associating the AppGW with the KV and the webapp using the private endpoint. Here, we will go through couple scenarios to demonstrate what is actually happening for each scenario.
 
 #### Create a private endpoint on the KeyVault and WebApp resources
 
@@ -212,7 +219,7 @@ Using the portal, we'll be creating the PE from each resources using the **"Netw
 **Tasks:**
 
 - Using the Connection Troubleshoot from the AppGW, please try to access each hostname and pay attention to the IP address resolving to the request.
-  - KeyVault: **tcs-kv-appgw.vault.azure.net**
+  - KeyVault: **tcs-appgw-kv.vault.azure.net**
   - WebApp: **tcs-webapp.azurewebsites.net**
 
 ![ConnectionTB](https://github.com/Tchimwa/Appgw-Keyvault-Private-Endpoint-With-Custom-DNS/blob/main/images/ConnectionTB.png)
@@ -222,6 +229,16 @@ Using the portal, we'll be creating the PE from each resources using the **"Netw
 - Check the probes, what do you notice? Can you explain what is currently happening?
     _Hint: Check this [link](https://docs.microsoft.com/en-us/azure/app-service/networking/private-endpoint?msclkid=d93d4e90bed111ec9d5286eeb78023c9)_.
 - How do we resolve that issue?
+    _Hint: virtual links_
+- From the VM named "dns-01" using the credentials above, run the following commands to verify the DNS resolution throughout the custom DNS. From the browser launch <https://tcs-webapp.azurewebsites.net>.
+
+```typescript
+nslookup tcs-appgw-kv.vault.azure.net
+nslookup tcs-webapp.azurewebsites.net
+```
+
+- From the AppGW page, use the **Connection Troubleshoot** to test the traffic, and see if the AppGW is resolving to Private Endpoint of each resource.
+- From the "webapp-probe", you might have to make a change to trigger the update.
 
 #### Custom DNS scenarios
 
@@ -238,39 +255,46 @@ VM credentials:
 
 **Tasks:**
 
-- From both private zones, remove the virtual links to the **"appgwkv-vnet-01"** so we can have a customer original scenario.
+- From both private zones, remove the virtual links to the **"appgwkv-vnet-01"** so we can have the original scenario.
 - Change the DNS servers on both VNETs to use the custom DNS server **"dns-02"** with the IP address **10.91.2.10**.
 - Restart both VM: **dns-01** and **dns-02**
-- From the VM named "dns-01" using the credentials above, run the following commands to verify the DNS resolution throughout the custom DNS.
+- From the VM named "dns-01" using the credentials above, run the following commands to verify the DNS resolution throughout the custom DNS. From the browser launch <https://tcs-webapp.azurewebsites.net>.
 
 ```typescript
-nslookup tcs-kv-appgw.vault.azure.net
+nslookup tcs-appgw-kv.vault.azure.net
 nslookup tcs-webapp.azurewebsites.net
 ```
 
 - What do you notice?
 - Are those the results expected? Explain why.
+- Check the KV firewall and make sure that it is restricted to allow access to the AppGW subnet only.
+- From "dns-01", use PSPing and to test th traffic on both PE using their hostname and conclude.
+
+```typescript
+psping tcs-appgw-kv.vault.azure.net:443
+psping  tcs-webapp.azurewebsites.net:443
+```
 
 - Try to restart the AppGW to apply the DNS change using the commands below
 
 ```typescript
-az network application-gateway stop -g "tcs-appgwkv-rg" -n "tcs-appgw-kv"
-az network application-gateway start -g "tcs-appgwkv-rg" -n "tcs-appgw-kv"
+az network application-gateway stop -g "tcs-appgwkv-rg" -n "tcs-appgw"
+az network application-gateway start -g "tcs-appgwkv-rg" -n "tcs-appgw"
 ```
 
-- Why is the AppGW start failing?Explain the issue.
-- Check the state of the AppGW
+- Using the **Connection Troubleshoot** tool from the AppGW, please do the test traffic on each hostname and pay attention to the IP address resolving to the request.
+  - KeyVault: **tcs-appgw-kv.vault.azure.net**
+  - WebApp: **tcs-webapp.azurewebsites.net**
+
+What do you notice and how to resolve the issue?
 
 **Resolution:**
 
-This is a current issue when it comes to the AppGw integration with KV using the Private Endpoint. It seems not to care about custom DNS in this scenario. In order to resolve this issue, we simply have to create a virtual link between the pivate zone **"privatelink.vaultcore.azure.net"** and the VNET hosting the AppGW which is **"appgwkv-vnet-01"** in this case.
+This is a current issue when it comes to the AppGw integration with KV using the Private Endpoint. It seems not to care about custom DNS in this scenario. In order to resolve this issue, we simply have to create a virtual link between the private zone **"privatelink.vaultcore.azure.net"** and the VNET hosting the AppGW which is **"appgwkv-vnet-01"** in this case.
 
 ![Scenario01Resolution](https://github.com/Tchimwa/Appgw-Keyvault-Private-Endpoint-With-Custom-DNS/blob/main/images/Scenario01Resolution.png)
 
-- Let's check the probes to see if the probe "webapp-probe" is currently Healthy.
-- Use the Connection Troubleshoot to check if the AppGW is resolving to the WebApp Private Endpoint IP Address.
-
-From 2 different PaaS services using the private endpoint, we have couple different behaviors from the AppGW. It seems to ignore the custom DNS when it comes to the KV, but it seems not to have any issue with the WebApp.
+From 2 different PaaS services using the private endpoint, we have couple different behaviors from the AppGW. It seems to ignore the custom DNS when it comes to the KV, but it seems not to have any issue with the WebApp. Also, the KV firewall seems not to be applied on the Private endpoint connection.
 
 ##### AppGW sharing the same VNET with the custom DNS server on Azure
 
@@ -280,13 +304,13 @@ Here, we will have our DNS server on the same VNET with our Application Gateway 
 
 **Tasks:**
 
-- From both private zones, remove the virtual links to the "appgwkv-vnet-01" so we can have a customer original scenario.
+- From both private zones, remove the virtual links to the "appgwkv-vnet-01" so we can have the original scenario.
 - Change the DNS servers on both VNETs to use the custom DNS server **"dns-01"** with the IP address **10.90.2.10**.
 - Restart both VM: **dns-01** and **dns-02**
 - From the VM named "dns-01" using the credentials above, run the following commands to verify the DNS resolution throughout the custom DNS.
 
 ```typescript
-nslookup tcs-kv-appgw.vault.azure.net
+nslookup tcs-appgw-kv.vault.azure.net
 nslookup tcs-webapp.azurewebsites.net
 ```
 
@@ -295,22 +319,24 @@ nslookup tcs-webapp.azurewebsites.net
 - Try to restart the AppGW to apply the DNS change using the commands below
 
 ```typescript
-az network application-gateway stop -g "tcs-appgwkv-rg" -n "tcs-appgw-kv"
-az network application-gateway start -g "tcs-appgwkv-rg" -n "tcs-appgw-kv"
+az network application-gateway stop -g "tcs-appgwkv-rg" -n "tcs-appgw"
+az network application-gateway start -g "tcs-appgwkv-rg" -n "tcs-appgw"
 ```
 
-- Why is the AppGW start failing? Explain the issue.
-- Check the state of the AppGW
+- Using the **Connection Troubleshoot** tool from the AppGW, please do the test traffic on each hostname and pay attention to the IP address resolving to the request.
+  - KeyVault: **tcs-appgw-kv.vault.azure.net**
+  - WebApp: **tcs-webapp.azurewebsites.net**
 
-**AppGW issue resoluton:** Create a virtual link between the private zone **"privatelink.vaultcore.azure.net"** and the VNET hosting the AppGW and the DNS server which is **"appgwkv-vnet-01"** in this case, then start the AppGW.
+**AppGW issue resolution:** Create a virtual link between the private zone **"privatelink.vaultcore.azure.net"** and the VNET hosting the AppGW and the DNS server which is **"appgwkv-vnet-01"** in this case.
 
 - Check the probe named "webapp-probe", is it in the Healthy State?
+- From the browser launch <https://tcs-webapp.azurewebsites.net>, is it successful? Why?
 - Use the Connection Troubleshoot to check if the AppGW is resolving to the WebApp Private Endpoint IP Address as it should with a PE.
 - How do you resolve the issue?
 
 **Resolution:**
 
-Since the PE were created on a different VNET which is **appgwkv-vnet-02**, the virtual links are automatically created with the VNET hosting the PE. With a custom DNS server on a different VNET, that DNS doesn't have any link to the private zones so it unable to query them and get the records for both Private Endpoints. To resolve the issue, we need to create a virtual link between the VNET hosting the custom DNS and the private zones. A virtual link will be create between **appgwkv-vnet-01** and both private zones as you can see on the pic below.
+Since the PE were created on a different VNET which is **appgwkv-vnet-02**, the virtual links are automatically created with the VNET hosting the PE. With a custom DNS server on a different VNET, that DNS doesn't have any link to the private zones so it is unable to query them and get the records for both Private Endpoints. To resolve the issue, we need to create a virtual link between the VNET hosting the custom DNS and the private zones. A virtual link will be create between **appgwkv-vnet-01** and both private zones as you can see on the pic below.
 
 ![Scenario02Resolution](https://github.com/Tchimwa/Appgw-Keyvault-Private-Endpoint-With-Custom-DNS/blob/main/images/Scenario02Resolution.png)
 
@@ -329,7 +355,7 @@ az network application-gateway http-listener create \
                       --frontend-ip "appgwkv-feconf" \
                       --frontend-port "http-80" \
                       --resource-group "tcs-appgwkv-rg" \
-                      --gateway-name "tcs-appgw-kv"
+                      --gateway-name "tcs-appgw"
 ```
 
 - Add the redirection configuration
@@ -337,7 +363,7 @@ az network application-gateway http-listener create \
 ```typescript
 az network application-gateway redirect-config create \
                         --name "webapp-http_to_https" \
-                        --gateway-name "tcs-appgw-kv" \
+                        --gateway-name "tcs-appgw" \
                         --resource-group "tcs-appgwkv-rg" \
                         --type Permanent \
                         --target-listener "webapp-https" \
@@ -349,7 +375,7 @@ az network application-gateway redirect-config create \
 
 ```typescript
 az network application-gateway rule create \
-                      --gateway-name "tcs-appgw-kv" \
+                      --gateway-name "tcs-appgw" \
                       --name "webapp-redirect" \
                       --resource-group "tcs-appgwkv-rg" \
                       --http-listener "webapp-http" \
@@ -358,7 +384,7 @@ az network application-gateway rule create \
                       --priority 20
 ```
 
-The successful test below is showing how the request from _http://webapp.ced-sougang.com_ is getting permanently redirected to _https://webapp.ced-sougang.com_ with the HTTP response 301
+The successful test below is showing how the request from _<http://tcs-webapp.ced-sougang.com>_ is getting permanently redirected to _<https://tcs-webapp.ced-sougang.com>_ with the HTTP response 301
 
 ```typescript
 C:\Users\tcsougan>curl -I http://webapp.ced-sougang.com
@@ -407,5 +433,11 @@ az network vnet subnet update --name "apps-sbnt" --vnet-name "appgwkv-vnet-01" \
                             --resource-group "tcs-appgwkv-rg" \
                             --network-security-group "tcs-appgw-nsg"
 ```
+
+### Rewrite rules
+
+- Let's set up a rewrite rule to remove the header named "Server" from the Response Header, and apply it on all the webapp rules
+- Let's set up a rewrite rule to add the custom header named "EngineerName" to the Response Header, and apply it on all the appgwkv rules
+- Use the Developer Tools to verify the rules before and after applying them to the AppGW.
 
 Application Gateway has some quite interesting features. Here, we have chosen to work on a few that our customers struggle the most with. They will be more labs related to AppGw in the future, but in the meantime, I hope you have learned something from this one.
