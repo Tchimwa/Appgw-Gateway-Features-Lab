@@ -165,9 +165,9 @@ echo "127.0.0.1 netdata.ced-sougang.com" | tee -a /etc/hosts
 echo "127.0.0.1 labtime.ced-sougang.com" | tee -a /etc/hosts
 
 #Completing the config files
-sed -i 's/try_files /try_files $uri $uri/' /etc/nginx/sites-available/labtime.ced-sougang.com.conf
-sed -i 's/try_files /try_files $uri $uri/' /etc/nginx/sites-available/netdata.ced-sougang.com.conf
-sed -i 's/try_files /try_files $uri $uri/' /etc/nginx/sites-available/www.ced-sougang.com.conf
+sed -i 's/try_files  /try_files $uri $uri/' /etc/nginx/sites-available/labtime.ced-sougang.com.conf
+sed -i 's/try_files  /try_files $uri $uri/' /etc/nginx/sites-available/netdata.ced-sougang.com.conf
+sed -i 's/try_files  /try_files $uri $uri/' /etc/nginx/sites-available/www.ced-sougang.com.conf
 
 #Enabling the websites
 ln -s /etc/nginx/sites-available/labtime.ced-sougang.com.conf /etc/nginx/sites-enabled/labtime.ced-sougang.com.conf

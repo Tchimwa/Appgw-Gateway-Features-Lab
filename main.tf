@@ -376,6 +376,7 @@ resource "azurerm_application_gateway" "appgw_web" {
       autoscale_configuration
     ]
   }  
+  depends_on = [azurerm_key_vault_certificate.kv_cert]
 }
 
 resource "azurerm_network_interface_application_gateway_backend_address_pool_association" "appgwnic-assoc" {
@@ -405,6 +406,7 @@ resource "azurerm_key_vault_certificate" "kv_cert" {
     contents = filebase64("./certs/wildcard_ced-sougang_com.pfx")
     password = var.cert-password
   }
+  depends_on = [azurerm_key_vault_access_policy.user_access]
 }
 
 resource "azurerm_user_assigned_identity" "appgw_umi" {
@@ -460,6 +462,7 @@ resource "azurerm_key_vault_access_policy" "user_access" {
       "setissuers",
       "update",
   ]
+  depends_on = [azurerm_key_vault.kv]
 }
 
 resource "azurerm_key_vault_access_policy" "appgwkv_access" {
