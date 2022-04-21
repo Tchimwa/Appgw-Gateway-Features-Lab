@@ -1,6 +1,5 @@
 # Application Gateway: Keyvault integration, App service integration, End-to-End SSL, few common issues and more
 
-- [Application Gateway: Keyvault integration, App service integration, End-to-End SSL, few common issues and more](#application-gateway--keyvault-integration--app-service-integration--end-to-end-ssl--few-common-issues-and-more)
   * [Introduction](#introduction)
   * [Prerequisites and architecture](#prerequisites-and-architecture)
   * [Deployment](#deployment)
