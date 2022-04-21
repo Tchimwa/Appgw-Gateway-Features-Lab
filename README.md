@@ -1,5 +1,26 @@
 # Application Gateway: Keyvault integration, App service integration, End-to-End SSL, few common issues and more
 
+- [Application Gateway: Keyvault integration, App service integration, End-to-End SSL, few common issues and more](#application-gateway--keyvault-integration--app-service-integration--end-to-end-ssl--few-common-issues-and-more)
+  * [Introduction](#introduction)
+  * [Prerequisites and architecture](#prerequisites-and-architecture)
+  * [Deployment](#deployment)
+  * [Case scenarios](#case-scenarios)
+    + [Assumptions](#assumptions)
+    + [End-to-end TLS Termination with a Multi-site listener](#end-to-end-tls-termination-with-a-multi-site-listener)
+    + [Webapp integration with Application Gateway](#webapp-integration-with-application-gateway)
+      - [Add the backend pool for the Webapp](#add-the-backend-pool-for-the-webapp)
+      - [Create the backend settings and the probe](#create-the-backend-settings-and-the-probe)
+      - [Create a HTTPS listener and the routing rule](#create-a-https-listener-and-the-routing-rule)
+    + [KeyVault Integration](#keyvault-integration)
+    + [Redirection feature - HTTP to HTTPS on the WebApp listener](#redirection-feature---http-to-https-on-the-webapp-listener)
+    + [NSG with your AppGW v2 SKU](#nsg-with-your-appgw-v2-sku)
+    + [Rewrite rules](#rewrite-rules)
+    + [Implications with the private endpoint on the KeyVault and the WebApp](#implications-with-the-private-endpoint-on-the-keyvault-and-the-webapp)
+      - [Create a private endpoint on the KeyVault and WebApp resources](#create-a-private-endpoint-on-the-keyvault-and-webapp-resources)
+      - [Custom DNS scenarios](#custom-dns-scenarios)
+        * [AppGW not sharing the same VNET with the custom DNS server on Azure](#appgw-not-sharing-the-same-vnet-with-the-custom-dns-server-on-azure)
+        * [AppGW sharing the same VNET with the custom DNS server on Azure](#appgw-sharing-the-same-vnet-with-the-custom-dns-server-on-azure)
+
 ## Introduction
 
 Application Gateway is one of the most popular products offered by Azure. It is very powerful and sometimes can be an essential piece for some applications out there. Configuring and managing some of the features it offers can often be a a huge challenge for customers. In this lab, we'll be experimenting and configuring some of those features like: End-to-End TLS termination, Keyvault integration, App service integration as backend., and also we'll be covering a few of the issues that we are noticing from the customers.
