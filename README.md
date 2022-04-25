@@ -44,6 +44,12 @@ Different case scenarios will be implemented, few tasks and questions will be co
 
 Deployment can be done from Azure Cloud Shell or any terminal connected to Azure (VS Code, PowerShell, etc..). Not using Azure Cloud Shell will require Git, Terraform, Az Powershell modules or AzCLI installed. Feel free to change the locations on the _variables.tf_. The default values are _eastus_ and _centralus_.
 
+Using Azure Cloud Shell, you will have to upgrade Terraform to the latest version 1.19.0. Follow the link below to see how to upgrade it:
+
+<https://docs.microsoft.com/en-us/azure/developer/terraform/get-started-cloud-shell-bash?tabs=bash#3-install-latest-version-of-terraform-in-azure-cloud-shell>
+
+After upgrading Terraform, please run the commands below to deploy your architecture:
+
 ```typescript
 git clone https://github.com/Tchimwa/Appgw-Gateway-Features-Lab.git
 cd ./Appgw-Gateway-Features-Lab
