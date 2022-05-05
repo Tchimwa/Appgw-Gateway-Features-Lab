@@ -62,7 +62,7 @@ terraform apply
 
 ### Assumptions
 
-- Both DNS servers already have 169.63.29.16 as forwarder
+- Both DNS servers already have 169.63.129.16 as forwarder
 - The initials used in this lab are mine **"tcs"**, so yours will be different and your resources' name as well
 - The certificate used here is my personal certificate and I manage the CN domain name. You can use yours and make some changes on the script and the configuration
 
@@ -231,7 +231,7 @@ Here we'll review the requirements and the most important points when it comes t
 
 Usually redirection from HTTP to HTTPS is done through 3 steps since the HTTPS was already created:
 
-- Adding the HTTPS listener
+- Adding the HTTP listener
 
 ```typescript
 az network application-gateway http-listener create \
@@ -313,9 +313,7 @@ az network nsg rule create --resource-group "tcs-appgwkv-rg" --nsg-name "tcs-app
 - Associate the NSG to the AppGW subnet
 
 ```typescript
-az network vnet subnet update --name "apps-sbnt" --vnet-name "appgwkv-vnet-01" \ 
-                            --resource-group "tcs-appgwkv-rg" \
-                            --network-security-group "tcs-appgw-nsg"
+az network vnet subnet update --resource-group "tcs-appgwkv-rg" --name "apps-sbnt" --vnet-name "appgwkv-vnet-01" --network-security-group "tcs-appgw-nsg"
 ```
 
 ### Rewrite rules
